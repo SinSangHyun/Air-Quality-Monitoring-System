@@ -1,6 +1,6 @@
 # Air-Quality-Monitoring-System
 
-![System Architecture](https://github.com/SinSangHyun/Air-Quality-Monitoring-System/blob/main/System%20Architecture.png)
+![System Architecture](https://github.com/SinSangHyun/Air-Quality-Monitoring-System/blob/main/System_Architecture.png)
 
 ▲ System Architecture
 

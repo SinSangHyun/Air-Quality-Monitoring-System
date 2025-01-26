@@ -1,44 +1,44 @@
-/*******************************************************
- * [Arduino Mega + ESP-01(AT) + 다중 센서 + ThingSpeak + TFT LCD]
- *
- * 센서 목록:
- *  (1) DHT22         (핀 2)
- *  (2) DF Robot HCHO (SoftwareSerial 핀10)
- *  (3) SGP30         (I2C SDA-SCL)
- *  (4) ZE16B-CO      (하드웨어 Serial1: RX1=19, TX1=18)
- *  (5) MH-Z16        (SoftwareSerial: RX=11, TX=12)
- *  (6) PMS7003       (하드웨어 Serial2: RX2=17, TX2=16)
- *
- * TFT LCD (ST7796S 기반) 관련 핀:
- *  LCDWIKI_SPI mylcd(ST7796S,A5,A3,50,51,A4,52,A0);
- *   - 모델 : ST7796S
- *   - CS : A5
- *   - DC(CD) : A3 
- *   - MISO : 50
- *   - MOSI : 51
- *   - RESET : A4
- *   - CLK : 52
- *   - LED(백라이트) : A0
- *
- * 표시할 센서 값:
- *  - 온도/습도 (DHT22)
- *  - HCHO (DF Robot)
- *  - TVOC (SGP30)
- *  - CO (ZE16B)
- *  - CO2 (MH-Z16)
- *  - PM1.0 / PM2.5 / PM10 (PMS7003)
- *
- * ThingSpeak 필드 매핑 예시:
- *   field1: 온도, field2: 습도, field3: TVOC, field4: CO,
- *   field5: CO2, field6: PM1.0, field7: PM2.5, field8: PM10
- *******************************************************/
+//*******************************************************
+// [Arduino Mega + ESP-01(AT) + Multiple Sensors + ThingSpeak + TFT LCD]
+//
+// Sensor List:
+//  (1) DHT22         (Pin 2)
+//  (2) DF Robot HCHO (SoftwareSerial Pin 10)
+//  (3) SGP30         (I2C SDA-SCL)
+//  (4) ZE16B-CO      (Hardware Serial1: RX1=19, TX1=18)
+//  (5) MH-Z16        (SoftwareSerial: RX=11, TX=12)
+//  (6) PMS7003       (Hardware Serial2: RX2=17, TX2=16)
+//
+// TFT LCD (ST7796S-based) Pin Information:
+//  LCDWIKI_SPI mylcd(ST7796S,A5,A3,50,51,A4,52,A0);
+//   - Model: ST7796S
+//   - CS: A5
+//   - DC(CD): A3 
+//   - MISO: 50
+//   - MOSI: 51
+//   - RESET: A4
+//   - CLK: 52
+//   - LED (Backlight): A0
+//
+// Sensor Values to Display:
+//  - Temperature/Humidity (DHT22)
+//  - HCHO (DF Robot)
+//  - TVOC (SGP30)
+//  - CO (ZE16B)
+//  - CO2 (MH-Z16)
+//  - PM1.0 / PM2.5 / PM10 (PMS7003)
+//
+// Example ThingSpeak Field Mapping:
+//   field1: Temperature, field2: Humidity, field3: TVOC, field4: CO,
+//   field5: CO2, field6: PM1.0, field7: PM2.5, field8: PM10
+//*******************************************************
 
-// ============== 라이브러리 ==============
+// ============== Libraries ==============
 #include <Arduino.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
-// DHT22 (온습도 센서)
+// DHT22 (Temperature/Humidity Sensor)
 #include "DHT.h"
 #define DHTPIN 2
 #define DHTTYPE DHT22
@@ -64,7 +64,7 @@ Mhz16 mhz16(11, 12); // RX=11, TX=12
 unsigned char pmsbytes[32];
 int pms_pm1 = 0, pms_pm25 = 0, pms_pm10 = 0;
 
-// ============== Wi-Fi(ESP8266 AT 모드) & ThingSpeak ==============
+// ============== Wi-Fi(ESP8266 AT Mode) & ThingSpeak ==============
 char ssid[] = "U+Net3AEC";
 char pass[] = "F5A73B6H#F";
 const char* thingspeakServer = "api.thingspeak.com";
@@ -85,8 +85,8 @@ bool sendATCommand(const String &cmd, const String &expectedResponse, unsigned l
       }
     }
   }
-  Serial.println("AT 명령 실패: " + cmd);
-  Serial.println("응답: " + response);
+  Serial.println("AT command failed: " + cmd);
+  Serial.println("Response: " + response);
   return false;
 }
 
@@ -117,7 +117,7 @@ bool receiveResponse(unsigned char *buffer, int length) {
 void updateThingSpeak(float temp, float hum, float tvoc, int co_ppm, int co2, int pm1, int pm25, int pm10) {
   String getRequest = "GET /update?api_key=";
   getRequest += apiKey;
-  // field1~8 매핑
+  // field1~8 Mapping
   getRequest += "&field1=" + String(temp);
   getRequest += "&field2=" + String(hum);
   getRequest += "&field3=" + String(tvoc);
@@ -134,20 +134,20 @@ void updateThingSpeak(float temp, float hum, float tvoc, int co_ppm, int co2, in
   Serial.println("ThingSpeak 전송 요청:");
   Serial.println(httpRequest);
 
-  // 1. TCP 연결
+  // 1. TCP Connect
   if (!sendATCommand("AT+CIPSTART=\"TCP\",\"" + String(thingspeakServer) + "\",80", "CONNECT", 8000)) {
     Serial.println("TCP 연결 실패");
     return;
   }
 
-  // 2. 데이터 길이 전송
+  // 2. Send data length
   int length = httpRequest.length();
   if (!sendATCommand("AT+CIPSEND=" + String(length), ">", 5000)) {
     Serial.println("CIPSEND 명령 실패");
     return;
   }
 
-  // 3. HTTP 요청 데이터 전송
+  // 3. Send HTTP request data
   Serial3.print(httpRequest);
   unsigned long timeout = millis() + 5000;
   while (millis() < timeout) {
@@ -158,7 +158,7 @@ void updateThingSpeak(float temp, float hum, float tvoc, int co_ppm, int co2, in
     }
   }
 
-  // 4. TCP 연결 닫기
+  // 4. Close TCP connection
   closeTCPConnection();
 }
 
@@ -170,25 +170,25 @@ bool closeTCPConnection() {
     if (Serial3.available()) {
       response += Serial3.readString();
       if (response.indexOf("OK") != -1) {
-        return true; // 정상 닫힘
+        return true; // Successfully closed
       } else if (response.indexOf("ERROR") != -1) {
-        Serial.println("TCP 연결 이미 닫혔거나 오류");
+        Serial.println("TCP connection already closed or error");
         return false;
       }
     }
   }
-  Serial.println("AT+CIPCLOSE 명령 응답 없음");
+  Serial.println("No response to AT+CIPCLOSE command");
   return false;
 }
 
-// ============== LCD 관련 라이브러리 ==============
+// ============== LCD Library ==============
 #include <LCDWIKI_GUI.h> 
 #include <LCDWIKI_SPI.h> 
 
-// LCD 객체 생성 (소프트웨어 SPI 예시)
+// Create LCD object (Software SPI example)
 LCDWIKI_SPI mylcd(ST7796S, A5, A3, 50, 51, A6, 52, A0);
 
-// 색상 정의
+// Color Definitions
 #define BLACK   0x0000
 #define BLUE    0x001F
 #define RED     0xF800
@@ -199,23 +199,23 @@ LCDWIKI_SPI mylcd(ST7796S, A5, A3, 50, 51, A6, 52, A0);
 #define YELLOW  0xFFE0
 #define WHITE   0xFFFF
 
-// ============== 전역 변수 (센서 데이터 저장) ==============
+// ============== Global Variables (Sensor Data Storage) ==============
 float dht_temperature = 0, dht_humidity = 0;
 float tvoc_ppb = 0;
 uint16_t co2_sgp30 = 0;
 int co2_mhz16 = 0;
 
-// ThingSpeak 전송 타이머 (예: 20초)
+// ThingSpeak Timer (Ex: 20s)
 unsigned long tsTimer = 0;
 const unsigned long tsInterval = 20000; 
 
 void setup() {
-  // 기본 시리얼
+  // Basic Serial
   Serial.begin(115200);
   while (!Serial) { ; }
   Serial.println("=== Setup Start ===");
 
-  // 센서용 시리얼 초기화
+  // Sensor Serial Reset
   Serial1.begin(9600);          // ZE16B-CO
   mhz16.begin(9600);            // MH-Z16
   Serial2.begin(PMS7003_BAUD_RATE); // PMS7003
@@ -225,7 +225,7 @@ void setup() {
   // SGP30 (I2C)
   Wire.begin();
   if (!mySensor.begin()) {
-    Serial.println("SGP30 연결 실패");
+    Serial.println("SGP30 Connection Failed");
     while (1);
   }
   mySensor.initAirQuality();
@@ -234,21 +234,21 @@ void setup() {
   Serial3.begin(ESP8266_BAUD);
   delay(2000);
 
-  // ESP8266 Wi-Fi 연결
+  // Connect ESP8266 Wi-Fi 
   if (sendATCommand("AT", "OK", 2000)) {
-    Serial.println("ESP8266 통신 OK");
+    Serial.println("ESP8266 Communication OK");
   }
   if (sendATCommand("AT+CWMODE=1", "OK", 2000)) {
-    Serial.println("Wi-Fi 모드 STA 설정 완료");
+    Serial.println("Wi-Fi Mode STA Setting Completed");
   }
   String cmd = "AT+CWJAP=\"" + String(ssid) + "\",\"" + String(pass) + "\"";
   if (sendATCommand(cmd, "WIFI GOT IP", 15000)) {
-    Serial.println("Wi-Fi 연결 완료");
+    Serial.println("Wi-Fi Connect Success");
   } else {
-    Serial.println("Wi-Fi 연결 실패");
+    Serial.println("Wi-Fi Connect Failed");
   }
 
-  // TFT LCD 초기화
+  // TFT LCD Reset
   mylcd.Init_LCD();
   mylcd.Fill_Screen(BLACK);
   
@@ -256,7 +256,7 @@ void setup() {
 }
 
 void loop() {
-  // (1) DHT22 센서 (온도, 습도) 2초 주기
+  // (1) DHT22 Sensor (Temp,Humi) 2s Cycle
   static unsigned long dhtTimer = 0;
   if (millis() - dhtTimer >= 2000) {
     dhtTimer = millis();
@@ -265,12 +265,12 @@ void loop() {
     if (!isnan(h) && !isnan(t)) {
       dht_humidity = h;
       dht_temperature = t;
-      Serial.print("[DHT22] 습도: ");
+      Serial.print("[DHT22] Humi: ");
       Serial.print(h);
-      Serial.print("%, 온도: ");
+      Serial.print("%, Temp: ");
       Serial.println(t);
     } else {
-      Serial.println("[DHT22] 데이터 읽기 실패");
+      Serial.println("[DHT22] Data reading Failed");
     }
   }
 
@@ -287,7 +287,7 @@ if (millis() - sensorTimer >= 1000) {
   
 }
 
-  // (3) SGP30 (TVOC, CO2) 1초 주기
+  // (3) SGP30 (TVOC, CO2) 1s Cycle
   static unsigned long sgpTimer = 0;
   if (millis() - sgpTimer >= 1000) {
     sgpTimer = millis();
@@ -298,7 +298,7 @@ if (millis() - sensorTimer >= 1000) {
     Serial.println(tvoc_ppb);
   }
 
-  // (4) ZE16B-CO 센서 (CO) 1초 주기
+  // (4) ZE16B-CO Sensor (CO) 1s Cycle
   static unsigned long coTimer = 0;
   if (millis() - coTimer >= 1000) {
     coTimer = millis();
@@ -310,20 +310,20 @@ if (millis() - sensorTimer >= 1000) {
         if (ze16b_CO > 100)
         { 
           ze16b_CO = 0;
-          Serial.print("[ZE16B] CO 센서 오류");
+          Serial.print("[ZE16B] CO Sensor Error");
         }
         Serial.print("[ZE16B] CO ppm: ");
         Serial.println(ze16b_CO);
       } else {
-        Serial.println("[ZE16B] 체크섬 오류");
+        Serial.println("[ZE16B] Checksum Error");
       }
     } else {
-      Serial.println("[ZE16B] 응답 없음");
+      Serial.println("[ZE16B] No response");
     }
   }
 
 
-  // (6) PMS7003 (PM1.0, PM2.5, PM10) 1초 주기
+  // (6) PMS7003 (PM1.0, PM2.5, PM10) 1s Cycle
   if (Serial2.available() >= 32) {
     int i = 0;
     for (i = 0; i < 32; i++) {
@@ -333,7 +333,7 @@ if (millis() - sensorTimer >= 1000) {
         break;
       }
     }
-    // 정상 데이터(헤더 일치, 바이트 32개) 가정
+    // Normal Data(32 bytes)
     if (i > 2 && pmsbytes[29] == 0x00 && pms_pm1<1000 && pms_pm25 < 1000 && pms_pm10 < 1000) {
       pms_pm1  = (pmsbytes[10] << 8) | pmsbytes[11];
       pms_pm25 = (pmsbytes[12] << 8) | pmsbytes[13];
@@ -347,8 +347,8 @@ if (millis() - sensorTimer >= 1000) {
     }
   }
 
-  // === 센서값을 TFT LCD에 표시 ===
-  // (주기적으로 화면을 갱신, 예: 2초~5초마다 갱신 가능)
+  // === Sensor Value on TFT LCD ===
+
   static unsigned long lcdTimer = 0;
 if (millis() - lcdTimer >= 2000) {
     lcdTimer = millis();
@@ -360,7 +360,7 @@ if (millis() - lcdTimer >= 2000) {
     int yBase = 20;
     int gap   = 60;
 
-    // 1) 온도
+    // 1) Temp
     int tempX = 120, tempY = yBase;
     mylcd.Set_Text_colour(getColor(dht_temperature, 18, 26, 15, 30));
     mylcd.Fill_Rect(tempX, tempY - 5, tempX + 100, tempY + 20, BLACK);
@@ -368,7 +368,7 @@ if (millis() - lcdTimer >= 2000) {
     mylcd.Print_Number_Float(dht_temperature, 1, tempX, tempY, '.', 0, ' ');
     mylcd.Print_String("C", 200, tempY);
 
-    // 2) 습도
+    // 2) Humi
     int humidX = 120, humidY = yBase + gap;
     mylcd.Set_Text_colour(getColor(dht_humidity, 40, 60, 30, 70));
     mylcd.Fill_Rect(humidX, humidY - 5, humidX + 100, humidY + 20, BLACK);
@@ -376,7 +376,7 @@ if (millis() - lcdTimer >= 2000) {
     mylcd.Print_Number_Float(dht_humidity, 1, humidX, humidY, '.', 0, ' ');
     mylcd.Print_String("%", 200, humidY);
 
-    // 3) TVOC (소수점 제거)
+    // 3) TVOC
     int tvocX = 120, tvocY = yBase + gap * 2;
     mylcd.Set_Text_colour(getColor(tvoc_ppb, 0, 220, 221, 660));
     mylcd.Fill_Rect(tvocX, tvocY - 5, tvocX + 100, tvocY + 20, BLACK);
@@ -428,7 +428,7 @@ if (millis() - lcdTimer >= 2000) {
 
 
 
-  // === ThingSpeak 전송 (20초 주기) ===
+  // === ThingSpeak Sending (20s Cycle) ===
   if (millis() - tsTimer >= tsInterval) {
     tsTimer = millis();
     // dht_temperature, dht_humidity, tvoc_ppb, ze16b_CO, co2_mhz16, pms_pm1, pms_pm25, pms_pm10
@@ -438,7 +438,7 @@ if (millis() - lcdTimer >= 2000) {
 }
 
 uint16_t getColor(float value, float safeMin, float safeMax, float warningMin, float warningMax) {
-    if (value >= safeMin && value <= safeMax) return GREEN;    // 안전
-    if (value >= warningMin && value <= warningMax) return ORANGE; // 주의
-    return RED;                                                // 경고
+    if (value >= safeMin && value <= safeMax) return GREEN;    // Safe
+    if (value >= warningMin && value <= warningMax) return ORANGE; // Caution
+    return RED;                                                // Warning
 }

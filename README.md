@@ -21,8 +21,10 @@
 
 
 ![Thingspeak](https://github.com/SinSangHyun/Air-Quality-Monitoring-System/blob/main/Pictures/Thingspeak_Field_Setting.png)
+
 ▲ Thingspeak
 
 
 ![Thingview](https://github.com/SinSangHyun/Air-Quality-Monitoring-System/blob/main/Pictures/Thingview.jpg)
+
 ▲ Thingview
